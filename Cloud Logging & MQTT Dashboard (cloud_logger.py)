@@ -1,0 +1,40 @@
+import firebase_admin as fb [cite: 167]
+from firebase_admin import db [cite: 168]
+import paho.mqtt.client as mqtt [cite: 169]
+from datetime import datetime [cite: 170]
+
+# --- Firebase Initialization --- [cite: 171]
+# Requires 'key.json' service account file in the same directory
+cred = fb.credentials.Certificate('key.json') [cite: 172]
+fb.initialize_app(cred, {
+    'databaseURL': 'https://pkg-sort.firebaseio.com' [cite: 173, 174]
+})
+ref = db.reference('/packages') [cite: 176]
+
+# --- MQTT Setup --- [cite: 177]
+client = mqtt.Client() [cite: 178]
+client.connect("mqtt.broker.io", 1883) [cite: 179]
+
+def log_to_cloud(product, dest, lane):
+    """
+    Sends sorting data to Firebase for logging and MQTT for live dashboarding.
+    """
+    timestamp = datetime.now().isoformat() [cite: 181]
+    
+    # Prepare data payload [cite: 182]
+    data = {
+        "product": product, [cite: 183]
+        "destination": dest, [cite: 184]
+        "lane": lane, [cite: 185]
+        "status": "routed", [cite: 186]
+        "timestamp": timestamp [cite: 187]
+    }
+
+    # 1. Update Firebase Realtime Database
+    ref.push(data) [cite: 267]
+
+    # 2. Publish to MQTT for Live Dashboard Refresh
+    # This allows the UI to update instantly without polling the DB
+    client.publish("sorting/live_events", str(data)) [cite: 268]
+    
+    print(f"Cloud Log Successful: {product} to {dest}")

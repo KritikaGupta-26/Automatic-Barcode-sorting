@@ -1,0 +1,64 @@
+import RPi.GPIO as GPIO [cite: 127]
+import time [cite: 128]
+# Note: cloud_logger logic is imported or called here [cite: 145]
+
+# GPIO Pin Configuration [cite: 164]
+# Lane servo pins assigned to specific BCM pins [cite: 130]
+LANE_PINS = {1: 18, 2: 23, 3: 24, 4: 25} [cite: 130, 164]
+REJECT_PIN = 26 [cite: 131, 164]
+BUZZER_PIN = 27 [cite: 132]
+
+# Product → Destination Mapping (Database) [cite: 133, 134]
+# Format: "BARCODE_ID": ("Product Name", "Destination", Lane_Number)
+DB = {
+    "LAPTOP01": ("Dell Laptop", "Delhi", 1), [cite: 135, 148-151]
+    "SHOE002":  ("Nike Shoes", "Mumbai", 2), [cite: 136, 152-154]
+    "PHONE03":  ("Samsung", "Bangalore", 3), [cite: 137, 155-157]
+    "BOOK999":  ("Textbooks", "Hyderabad", 4) [cite: 158-160]
+} [cite: 138]
+
+def setup_gpio():
+    """Initializes the GPIO pins for servos and alerts."""
+    GPIO.setmode(GPIO.BCM)
+    for pin in LANE_PINS.values():
+        GPIO.setup(pin, GPIO.OUT)
+    GPIO.setup(REJECT_PIN, GPIO.OUT)
+    GPIO.setup(BUZZER_PIN, GPIO.OUT)
+
+def trigger_alert():
+    """Activates LED/Buzzer for unreadable or unknown packages.""" [cite: 269]
+    GPIO.output(BUZZER_PIN, GPIO.HIGH) [cite: 132, 141]
+    time.sleep(0.5)
+    GPIO.output(BUZZER_PIN, GPIO.LOW)
+
+def activate_lane(lane_num):
+    """Actuates the SG90 servo to divert the package.""" [cite: 223, 261]
+    pin = LANE_PINS[lane_num]
+    # Simple high/low for demonstration; PWM is used for precise 180° rotation [cite: 225]
+    GPIO.output(pin, GPIO.HIGH) 
+    time.sleep(1) # Allow package to pass [cite: 262]
+    GPIO.output(pin, GPIO.LOW)
+
+def route_package(barcode_id):
+    """Main routing logic to match barcode data to a physical lane.""" [cite: 139]
+    if barcode_id not in DB: [cite: 140]
+        trigger_alert() # error! [cite: 141]
+        activate_lane_reject() # Send to Reject Bin [cite: 142, 163]
+        return "REJECT" [cite: 142]
+
+    # Extract mapping data [cite: 143]
+    product, dest, lane = DB[barcode_id] [cite: 143]
+    
+    # Actuate physical diverter [cite: 144]
+    activate_lane(lane) [cite: 144]
+    
+    # Update cloud dashboard [cite: 145]
+    # log_to_cloud(product, dest, lane) [cite: 145, 180]
+    
+    return f"Routed→Lane {lane} ({dest})" [cite: 146]
+
+def activate_lane_reject():
+    """Sends unknown items to the dedicated Reject Bin.""" [cite: 87, 163]
+    GPIO.output(REJECT_PIN, GPIO.HIGH)
+    time.sleep(1)
+    GPIO.output(REJECT_PIN, GPIO.LOW)

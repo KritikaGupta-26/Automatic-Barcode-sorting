@@ -1,0 +1,50 @@
+import cv2
+import pyzbar.pyzbar as pyzbar
+import pytesseract
+import RPi.GPIO as GPIO
+
+# Initialize camera module [cite: 93]
+cap = cv2.VideoCapture(0) [cite: 94]
+
+# Hardware Trigger Configuration [cite: 95]
+TRIGGER_PIN = 17 
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TRIGGER_PIN, GPIO.IN) [cite: 96]
+
+def ocr_fallback(frame):
+    """
+    Tesseract OCR reads label text when barcode is unreadable[cite: 121].
+    Uses Page Segmentation Mode 6 (Assume a single uniform block of text)[cite: 108].
+    """
+    return pytesseract.image_to_string(frame, config='--psm 6') [cite: 107, 108]
+
+def detect_package():
+    """
+    Captures frame and attempts to decode barcode, falling back to OCR if needed[cite: 97, 105].
+    """
+    # Capture grayscale frame for processing [cite: 98, 99, 100]
+    ret, frame = cap.read() 
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) [cite: 100]
+
+    # Scan for QR/1D codes in all orientations [cite: 101, 118]
+    barcodes = pyzbar.decode(gray) [cite: 101]
+
+    for barcode in barcodes:
+        # If barcode is detected, decode and return the data [cite: 102, 103]
+        data = barcode.data.decode('utf-8') [cite: 103]
+        return data [cite: 104]
+
+    # If no barcode is found, trigger OCR fallback [cite: 105, 120]
+    return ocr_fallback(frame) [cite: 105]
+
+# Example execution logic based on system workflow [cite: 234]
+try:
+    while True:
+        # Wait for IR sensor to detect package on conveyor [cite: 111, 238]
+        if GPIO.input(TRIGGER_PIN) == GPIO.HIGH:
+            print("Package detected. Scanning...")
+            result = detect_package()
+            print(f"Extracted Data: {result}")
+finally:
+    cap.release()
+    GPIO.cleanup()
